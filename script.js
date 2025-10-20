@@ -100,7 +100,7 @@ const wordsList = [
 let secretWord = "";
 const maxAttempts = 6;
 let attempts = 0;
-let allAbsentLetters = new Set();
+let keyStatus = {}; // 1. AGGIUNTO: Oggetto per tracciare lo stato dei tasti
 
 // Riferimenti agli elementi DOM
 const welcomeMsg = document.getElementById("welcome-message");
@@ -110,20 +110,79 @@ const resultsArea = document.getElementById("results-area");
 const correctPosMsg = document.getElementById("correct-pos");
 const presentPosMsg = document.getElementById("present-pos");
 const absentLettersMsg = document.getElementById("absent-letters");
-const allAbsentMsg = document.getElementById("all-absent");
 const messageEl = document.getElementById("message");
 const finalWordEl = document.getElementById("final-word");
+const playAgainButton = document.getElementById("play-again-button");
+const keyboardArea = document.getElementById("keyboard-area"); // 2. AGGIUNTO: Riferimento alla tastiera
+
+// Funzione per generare la tastiera
+function createKeyboard() {
+    keyboardArea.innerHTML = ''; // Pulisce la tastiera precedente
+    keyStatus = {}; // Resetta lo stato dei tasti
+
+    const rows = [
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+        ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+    ];
+
+    rows.forEach(row => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'keyboard-row';
+        row.forEach(key => {
+            const keyDiv = document.createElement('div');
+            keyDiv.className = 'key';
+            keyDiv.id = `key-${key}`; // ID univoco per ogni tasto
+            keyDiv.textContent = key;
+            rowDiv.appendChild(keyDiv);
+        });
+        keyboardArea.appendChild(rowDiv);
+    });
+}
+
+// Funzione per aggiornare la tastiera
+function updateKeyboard(correct, present, absent) {
+    // La logica è: Corretto (verde) > Presente (giallo) > Assente (grigio)
+    
+    // 1. Lettere corrette (verdi) - Hanno la priorità massima
+    correct.forEach(letter => {
+        if (letter !== '_') {
+            keyStatus[letter] = 'correct';
+        }
+    });
+
+    // 2. Lettere presenti (gialle)
+    present.forEach(letter => {
+        // Applica 'present' solo se il tasto non è già 'correct'
+        if (keyStatus[letter] !== 'correct') {
+            keyStatus[letter] = 'present';
+        }
+    });
+
+    // 3. Lettere assenti (grigie)
+    absent.forEach(letter => {
+        // Applica 'absent' solo se il tasto non ha ancora uno stato
+        if (!keyStatus[letter]) {
+            keyStatus[letter] = 'absent';
+        }
+    });
+
+    // 4. Applica le classi CSS ai tasti nel DOM
+    for (const letter in keyStatus) {
+        const keyDiv = document.getElementById(`key-${letter}`);
+        if (keyDiv) {
+            // Rimuove classi vecchie prima di aggiungere quella nuova
+            keyDiv.classList.remove('present', 'absent', 'correct');
+            keyDiv.classList.add(keyStatus[letter]);
+        }
+    }
+}
 
 // Funzione per avviare/riavviare il gioco
 function startGame() {
-    // Scelta casuale di una parola dalla lista
     secretWord = wordsList[Math.floor(Math.random() * wordsList.length)];
-    
-    // Reset delle variabili di stato
     attempts = 0;
-    allAbsentLetters.clear();
     
-    // Reset dell'interfaccia
     welcomeMsg.textContent = `Benvenuto nel gioco! Devi indovinare una parola di 5 lettere. Hai un massimo di ${maxAttempts} tentativi.`;
     guessInput.value = "";
     guessInput.disabled = false;
@@ -132,8 +191,10 @@ function startGame() {
     messageEl.textContent = "";
     messageEl.className = "";
     finalWordEl.textContent = "";
-    
-    // Aggiungi un listener per il tasto "Invio"
+    playAgainButton.style.display = "none";
+
+    createKeyboard(); // 3. AGGIUNTO: Crea la tastiera a inizio gioco
+
     guessInput.addEventListener("keyup", handleKeyPress);
     guessButton.addEventListener("click", handleGuess);
 }
@@ -145,27 +206,40 @@ function handleKeyPress(event) {
     }
 }
 
-// Funzione per verificare la parola inserita
+// Funzione per verificare la parola inserita (Logica Wordle corretta)
 function checkWord(guess, secret) {
     let correctPositions = ['_', '_', '_', '_', '_'];
     let presentButWrongPosition = [];
     let absentLetters = [];
+    
+    let secretLetters = secret.split('');
+    let guessLetters = guess.split('');
 
-    // Verifica delle lettere in posizione corretta
+    // Pass 1: Trova le lettere corrette (Verdi)
     for (let i = 0; i < 5; i++) {
-        if (guess[i] === secret[i]) {
-            correctPositions[i] = guess[i];
+        if (guessLetters[i] === secretLetters[i]) {
+            correctPositions[i] = guessLetters[i];
+            secretLetters[i] = null; 
+            guessLetters[i] = null;
         }
     }
     
-    // Verifica delle lettere presenti ma in posizione sbagliata o assenti
+    // Pass 2: Trova le lettere presenti ma in posizione sbagliata (Gialle)
     for (let i = 0; i < 5; i++) {
-        if (guess[i] !== secret[i]) {
-            if (secret.includes(guess[i])) {
-                presentButWrongPosition.push(guess[i]);
-            } else {
-                absentLetters.push(guess[i]);
+        if (guessLetters[i] !== null) {
+            let secretIndex = secretLetters.indexOf(guessLetters[i]);
+            if (secretIndex > -1) {
+                presentButWrongPosition.push(guessLetters[i]);
+                secretLetters[secretIndex] = null;
+                guessLetters[i] = null; // Marca come usata
             }
+        }
+    }
+
+    // Pass 3: Le lettere rimaste nel guess sono assenti (Grigie)
+    for (let i = 0; i < 5; i++) {
+        if (guessLetters[i] !== null) {
+            absentLetters.push(guessLetters[i]);
         }
     }
 
@@ -176,35 +250,31 @@ function checkWord(guess, secret) {
 function handleGuess() {
     const guess = guessInput.value.toLowerCase().trim();
 
-    // Validazione 1: Lunghezza
     if (guess.length !== 5) {
         messageEl.textContent = "La parola deve essere di 5 lettere.";
         messageEl.className = "error";
         return;
     }
 
-    // Se la parola ha 5 lettere, puliamo eventuali messaggi di errore precedenti
     messageEl.textContent = "";
     messageEl.className = "";
 
-    // Esegui l'analisi della parola
     const { correctPositions, presentButWrongPosition, absentLetters } = checkWord(guess, secretWord);
     
-    // Aggiungi le lettere assenti al set globale
-    absentLetters.forEach(letter => allAbsentLetters.add(letter));
+    // 4. AGGIUNTO: Aggiorna la tastiera con i risultati
+    updateKeyboard(correctPositions, presentButWrongPosition, absentLetters);
 
     // Mostra i risultati
     resultsArea.style.display = "block";
-    correctPosMsg.textContent = "Posizioni corrette: " + correctPositions.join(' ');
+    correctPosMsg.textContent = correctPositions.join(' ');
+    // Uso [...new Set(...)] per non mostrare duplicati (es. se guess è "POLLO" e secret è "CARPA")
     presentPosMsg.textContent = "Lettere presenti ma in posizione sbagliata: " + [...new Set(presentButWrongPosition)].join(', ');
     absentLettersMsg.textContent = "Lettere assenti: " + [...new Set(absentLetters)].join(', ');
-    allAbsentMsg.textContent = "Tutte le lettere assenti: " + [...allAbsentLetters].sort().join(', ');
+    // 5. RIMOSSO: La riga per "allAbsentMsg" è stata eliminata
 
-    // Incrementa i tentativi e pulisci l'input
     attempts++;
     guessInput.value = "";
 
-    // Controlla la vittoria
     if (guess === secretWord) {
         messageEl.textContent = "Congratulazioni! Hai indovinato la parola!";
         messageEl.className = "success";
@@ -212,7 +282,6 @@ function handleGuess() {
         return;
     }
 
-    // Controlla la sconfitta
     if (attempts >= maxAttempts) {
         messageEl.textContent = "Mi dispiace, hai esaurito i tentativi.";
         messageEl.className = "error";
@@ -221,7 +290,6 @@ function handleGuess() {
         return;
     }
     
-    // Aggiorna il messaggio dei tentativi
     welcomeMsg.textContent = `Tentativo ${attempts + 1} di ${maxAttempts}.`;
 }
 
@@ -230,7 +298,11 @@ function endGame() {
     guessInput.disabled = true;
     guessButton.disabled = true;
     guessInput.removeEventListener("keyup", handleKeyPress);
+    playAgainButton.style.display = "block";
 }
 
 // Avvia il gioco quando la pagina è caricata
 document.addEventListener("DOMContentLoaded", startGame);
+
+// Collega la funzione startGame al clic del nuovo pulsante
+playAgainButton.addEventListener("click", startGame);

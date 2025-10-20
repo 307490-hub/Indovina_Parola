@@ -100,9 +100,11 @@ const wordsList = [
 let secretWord = "";
 const maxAttempts = 6;
 let attempts = 0;
-let keyStatus = {}; // 1. AGGIUNTO: Oggetto per tracciare lo stato dei tasti
+let keyStatus = {};
+let masterCorrectPositions = []; // 1. AGGIUNTA QUESTA RIGA
 
 // Riferimenti agli elementi DOM
+// ... (tutti i tuoi riferimenti DOM rimangono invariati)
 const welcomeMsg = document.getElementById("welcome-message");
 const guessInput = document.getElementById("guess-input");
 const guessButton = document.getElementById("guess-button");
@@ -113,12 +115,13 @@ const absentLettersMsg = document.getElementById("absent-letters");
 const messageEl = document.getElementById("message");
 const finalWordEl = document.getElementById("final-word");
 const playAgainButton = document.getElementById("play-again-button");
-const keyboardArea = document.getElementById("keyboard-area"); // 2. AGGIUNTO: Riferimento alla tastiera
+const keyboardArea = document.getElementById("keyboard-area");
 
 // Funzione per generare la tastiera
 function createKeyboard() {
-    keyboardArea.innerHTML = ''; // Pulisce la tastiera precedente
-    keyStatus = {}; // Resetta lo stato dei tasti
+    // ... (questa funzione rimane invariata)
+    keyboardArea.innerHTML = ''; 
+    keyStatus = {}; 
 
     const rows = [
         ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
@@ -132,7 +135,7 @@ function createKeyboard() {
         row.forEach(key => {
             const keyDiv = document.createElement('div');
             keyDiv.className = 'key';
-            keyDiv.id = `key-${key}`; // ID univoco per ogni tasto
+            keyDiv.id = `key-${key}`; 
             keyDiv.textContent = key;
             rowDiv.appendChild(keyDiv);
         });
@@ -142,36 +145,28 @@ function createKeyboard() {
 
 // Funzione per aggiornare la tastiera
 function updateKeyboard(correct, present, absent) {
-    // La logica è: Corretto (verde) > Presente (giallo) > Assente (grigio)
-    
-    // 1. Lettere corrette (verdi) - Hanno la priorità massima
+    // ... (questa funzione rimane invariata, con la correzione di prima)
     correct.forEach(letter => {
         if (letter !== '_') {
             keyStatus[letter] = 'correct';
         }
     });
 
-    // 2. Lettere presenti (gialle)
     present.forEach(letter => {
-        // Applica 'present' solo se il tasto non è già 'correct'
         if (keyStatus[letter] !== 'correct') {
             keyStatus[letter] = 'present';
         }
     });
 
-    // 3. Lettere assenti (grigie)
     absent.forEach(letter => {
-        // Applica 'absent' solo se il tasto non ha ancora uno stato
-        if (!keyStatus[letter]) {
+        if (keyStatus[letter] !== 'correct' && keyStatus[letter] !== 'present') {
             keyStatus[letter] = 'absent';
         }
     });
 
-    // 4. Applica le classi CSS ai tasti nel DOM
     for (const letter in keyStatus) {
         const keyDiv = document.getElementById(`key-${letter}`);
         if (keyDiv) {
-            // Rimuove classi vecchie prima di aggiungere quella nuova
             keyDiv.classList.remove('present', 'absent', 'correct');
             keyDiv.classList.add(keyStatus[letter]);
         }
@@ -182,6 +177,7 @@ function updateKeyboard(correct, present, absent) {
 function startGame() {
     secretWord = wordsList[Math.floor(Math.random() * wordsList.length)];
     attempts = 0;
+    masterCorrectPositions = ['_', '_', '_', '_', '_']; // 2. AGGIUNTA QUESTA RIGA (reset)
     
     welcomeMsg.textContent = `Benvenuto nel gioco! Devi indovinare una parola di 5 lettere. Hai un massimo di ${maxAttempts} tentativi.`;
     guessInput.value = "";
@@ -193,7 +189,7 @@ function startGame() {
     finalWordEl.textContent = "";
     playAgainButton.style.display = "none";
 
-    createKeyboard(); // 3. AGGIUNTO: Crea la tastiera a inizio gioco
+    createKeyboard(); 
 
     guessInput.addEventListener("keyup", handleKeyPress);
     guessButton.addEventListener("click", handleGuess);
@@ -201,6 +197,7 @@ function startGame() {
 
 // Funzione per gestire la pressione del tasto Invio
 function handleKeyPress(event) {
+    // ... (questa funzione rimane invariata)
     if (event.key === "Enter") {
         handleGuess();
     }
@@ -208,6 +205,7 @@ function handleKeyPress(event) {
 
 // Funzione per verificare la parola inserita (Logica Wordle corretta)
 function checkWord(guess, secret) {
+    // ... (questa funzione rimane invariata)
     let correctPositions = ['_', '_', '_', '_', '_'];
     let presentButWrongPosition = [];
     let absentLetters = [];
@@ -215,7 +213,6 @@ function checkWord(guess, secret) {
     let secretLetters = secret.split('');
     let guessLetters = guess.split('');
 
-    // Pass 1: Trova le lettere corrette (Verdi)
     for (let i = 0; i < 5; i++) {
         if (guessLetters[i] === secretLetters[i]) {
             correctPositions[i] = guessLetters[i];
@@ -224,19 +221,17 @@ function checkWord(guess, secret) {
         }
     }
     
-    // Pass 2: Trova le lettere presenti ma in posizione sbagliata (Gialle)
     for (let i = 0; i < 5; i++) {
         if (guessLetters[i] !== null) {
             let secretIndex = secretLetters.indexOf(guessLetters[i]);
             if (secretIndex > -1) {
                 presentButWrongPosition.push(guessLetters[i]);
                 secretLetters[secretIndex] = null;
-                guessLetters[i] = null; // Marca come usata
+                guessLetters[i] = null; 
             }
         }
     }
 
-    // Pass 3: Le lettere rimaste nel guess sono assenti (Grigie)
     for (let i = 0; i < 5; i++) {
         if (guessLetters[i] !== null) {
             absentLetters.push(guessLetters[i]);
@@ -261,20 +256,26 @@ function handleGuess() {
 
     const { correctPositions, presentButWrongPosition, absentLetters } = checkWord(guess, secretWord);
     
-    // 4. AGGIUNTO: Aggiorna la tastiera con i risultati
-    updateKeyboard(correctPositions, presentButWrongPosition, absentLetters);
+    // 3. MODIFICATO questo blocco per "fondere" i risultati
+    for (let i = 0; i < 5; i++) {
+        if (correctPositions[i] !== '_') {
+            masterCorrectPositions[i] = correctPositions[i];
+        }
+    }
+    
+    // 4. MODIFICATO questo blocco per usare "masterCorrectPositions"
+    updateKeyboard(masterCorrectPositions, presentButWrongPosition, absentLetters);
 
     // Mostra i risultati
     resultsArea.style.display = "block";
-    correctPosMsg.textContent = correctPositions.join(' ');
-    // Uso [...new Set(...)] per non mostrare duplicati (es. se guess è "POLLO" e secret è "CARPA")
+    correctPosMsg.textContent = masterCorrectPositions.join(' '); // Usa la variabile master
     presentPosMsg.textContent = "Lettere presenti ma in posizione sbagliata: " + [...new Set(presentButWrongPosition)].join(', ');
     absentLettersMsg.textContent = "Lettere assenti: " + [...new Set(absentLetters)].join(', ');
-    // 5. RIMOSSO: La riga per "allAbsentMsg" è stata eliminata
 
     attempts++;
     guessInput.value = "";
 
+    // Controlla la vittoria (confronta con la parola segreta, non con i trattini)
     if (guess === secretWord) {
         messageEl.textContent = "Congratulazioni! Hai indovinato la parola!";
         messageEl.className = "success";
@@ -295,6 +296,7 @@ function handleGuess() {
 
 // Funzione per terminare il gioco
 function endGame() {
+    // ... (questa funzione rimane invariata)
     guessInput.disabled = true;
     guessButton.disabled = true;
     guessInput.removeEventListener("keyup", handleKeyPress);

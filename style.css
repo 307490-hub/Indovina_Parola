@@ -71,3 +71,67 @@ button:disabled {
     margin-top: 15px;
     margin-bottom: 15px;
 }
+/* ... (tutto il tuo CSS esistente rimane qui sopra) ... */
+
+/* --- AGGIUNGI QUESTO BLOCCO --- */
+/* Stile per il nuovo pulsante "Gioca Ancora" */
+#play-again-button {
+    display: none; /* Nascosto per impostazione predefinita */
+    margin-top: 20px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #28a745; /* Un colore verde */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+#play-again-button:hover {
+    background-color: #218838;
+}
+
+#keyboard-area {
+    margin-top: 30px;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.key {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    width: 40px;
+    height: 50px;
+    margin: 0 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #dce1e3;
+    border-radius: 4px;
+    text-transform: uppercase;
+    color: #333;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+/* Colori degli stati dei tasti */
+.key.correct {
+    background-color: #6aaa64; /* Verde */
+    color: white;
+}
+
+.key.present {
+    background-color: #c9b458; /* Giallo */
+    color: white;
+}
+
+.key.absent {
+    background-color: #787c7e; /* Grigio scuro */
+    color: white;
+}
